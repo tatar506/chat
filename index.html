@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitch TTS Chat</title>
+    <!-- Подключаем TMI.js -->
+    <script src="https://cdn.jsdelivr.net/npm/tmi.js@1.8.5/dist/tmi.min.js"></script>
+    <style>
+        body { background: #0e0e10; color: #efeff1; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding-top: 20px; }
+        .setup { background: #18181b; padding: 20px; border-radius: 12px; border: 1px solid #333; text-align: center; }
+        input { padding: 12px; border-radius: 6px; border: 1px solid #444; background: #000; color: #fff; width: 250px; margin-bottom: 10px; }
+        button { padding: 12px 25px; border-radius: 6px; border: none; background: #9147ff; color: white; cursor: pointer; font-weight: bold; }
+        button:hover { background: #772ce8; }
+        #chat-container { width: 90%; max-width: 500px; margin-top: 20px; }
+        .msg { background: #1f1f23; padding: 12px; margin-bottom: 8px; border-radius: 6px; border-left: 4px solid #9147ff; animation: slideIn 0.3s; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+    </style>
+</head>
+<body>
+
+<div class="setup" id="setup">
+    <h3>Twitch TTS Chat</h3>
+    <input type="text" id="channelInput" placeholder="Введите имя канала...">
+    <br>
+    <button onclick="startChat()">Подключить чат</button>
+</div>
+
+<div id="chat-container"></div>
+
+<script>
+    function startChat() {
+        const channel = document.getElementById('channelInput').value.trim();
+        if (!channel) return alert('Введите имя канала!');
+
+        // Прячем меню настройки
+        document.getElementById('setup').style.display = 'none';
+
+        // Инициализация чата
+        const client = new tmi.Client({
+            channels: [channel]
+        });
+
+        client.connect().then(() => {
+            console.log("Успешное подключение!");
+        });
+
+        client.on('message', (channel, tags, message, self) => {
+            if (self) return;
+
+            const username = tags['display-name'];
+            
+            // Вывод в чат
+            const chatContainer = document.getElementById('chat-container');
+            const div = document.createElement('div');
+            div.className = 'msg';
+            div.innerHTML = `<strong>${username}:</strong> ${message}`;
+            chatContainer.prepend(div);
+
+            // Озвучка (TTS)
+            // Важно: чтобы звук сработал, пользователь ДОЛЖЕН кликнуть на страницу хотя бы раз!
+            const speech = new SpeechSynthesisUtterance(`${username} говорит ${message}`);
+            speech.lang = 'ru-RU';
+            speech.rate = 1;
+            window.speechSynthesis.speak(speech);
+
+            // Ограничение сообщений в DOM (чтобы не тормозил браузер)
+            if (chatContainer.children.length > 10) {
+                chatContainer.removeChild(chatContainer.lastChild);
+            }
+        });
+    }
+</script>
+</body>
+</html>
