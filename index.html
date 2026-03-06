@@ -2,85 +2,51 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Call System</title>
+    <title>Voice Call</title>
+    <!-- Используем CDN, это нормально для теста -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
-<body class="bg-slate-950 text-white min-h-screen flex items-center justify-center font-sans">
+<body class="bg-gray-900 text-white flex items-center justify-center h-screen">
 
-    <div class="bg-slate-900 p-8 rounded-3xl shadow-2xl w-full max-w-sm border border-slate-800">
-        <h1 class="text-2xl font-bold mb-1">Голосовой звонок</h1>
-        <p class="text-slate-500 text-sm mb-6">P2P связь через твой сервер</p>
-        
-        <div class="mb-6 bg-slate-950 p-4 rounded-xl border border-slate-800">
-            <p class="text-[10px] text-slate-500 uppercase tracking-widest mb-1">Твой ID</p>
-            <code id="my-id" class="text-emerald-400 font-mono text-lg break-all">Подключение к серверу...</code>
-        </div>
-
-        <input id="peer-id" placeholder="ID собеседника" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-emerald-500 transition">
-        
-        <button onclick="startCall()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-bold transition transform active:scale-95 shadow-lg shadow-emerald-900/20">
-            Позвонить
-        </button>
-
-        <div id="status" class="mt-6 text-center text-xs text-slate-500">Ожидание...</div>
+    <div class="bg-gray-800 p-6 rounded-2xl w-80 text-center">
+        <h2 class="text-xl font-bold mb-4">Звонок</h2>
+        <div id="my-id" class="text-blue-400 font-mono mb-4 text-sm break-all">Подключение...</div>
+        <input id="peer-id" placeholder="ID друга" class="w-full bg-gray-700 p-2 rounded mb-4 text-white">
+        <button onclick="startCall()" class="w-full bg-blue-600 py-2 rounded">Позвонить</button>
+        <p id="status" class="mt-4 text-xs text-gray-400"></p>
     </div>
 
-    <!-- Аудио элемент -->
     <audio id="remoteAudio" autoplay></audio>
 
     <script>
-        // ВСТАВЬ СЮДА СВОЮ ССЫЛКУ С RENDER БЕЗ HTTPS
-        // ПРИМЕР: 'my-call-server.onrender.com'
-        const RENDER_HOST = 'https://chat-xgeu.onrender.com';
-
+        const status = document.getElementById('status');
+        
+        // ВНИМАНИЕ: Впиши сюда ТОЛЬКО домен!
         const peer = new Peer(undefined, {
-            host: RENDER_HOST,
+            host: 'chat-xgeu.onrender.com',
             port: 443,
             secure: true,
             path: '/'
         });
 
-        const status = document.getElementById('status');
         let localStream;
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(s => localStream = s);
 
-        // Инициализация микрофона
-        navigator.mediaDevices.getUserMedia({ video: false, audio: true })
-            .then(stream => { localStream = stream; })
-            .catch(err => { status.innerText = "Ошибка микрофона: " + err.message; });
-
-        peer.on('open', id => {
-            document.getElementById('my-id').innerText = id;
-            status.innerText = "Готов к вызову";
-        });
-
+        peer.on('open', id => document.getElementById('my-id').innerText = "ID: " + id);
+        
         peer.on('call', call => {
-            status.innerText = "Входящий вызов...";
             call.answer(localStream);
-            call.on('stream', remoteStream => {
-                document.getElementById('remoteAudio').srcObject = remoteStream;
-                status.innerText = "Разговор идет";
-            });
+            call.on('stream', s => document.getElementById('remoteAudio').srcObject = s);
+            status.innerText = "Разговор...";
         });
 
         function startCall() {
-            const peerId = document.getElementById('peer-id').value;
-            if (!peerId) return alert("Введите ID друга!");
-            
-            status.innerText = "Вызов...";
-            const call = peer.call(peerId, localStream);
-            
-            call.on('stream', remoteStream => {
-                document.getElementById('remoteAudio').srcObject = remoteStream;
-                status.innerText = "Разговор идет";
-            });
+            const id = document.getElementById('peer-id').value;
+            const call = peer.call(id, localStream);
+            call.on('stream', s => document.getElementById('remoteAudio').srcObject = s);
+            status.innerText = "Звоним...";
         }
-
-        peer.on('error', err => {
-            status.innerText = "Ошибка: " + err.type;
-            console.error(err);
-        });
     </script>
 </body>
 </html>
