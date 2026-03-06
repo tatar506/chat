@@ -3,73 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Twitch TTS Chat</title>
-    <!-- Подключаем TMI.js -->
-    <script src="https://cdn.jsdelivr.net/npm/tmi.js@1.8.5/dist/tmi.min.js"></script>
-    <style>
-        body { background: #0e0e10; color: #efeff1; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding-top: 20px; }
-        .setup { background: #18181b; padding: 20px; border-radius: 12px; border: 1px solid #333; text-align: center; }
-        input { padding: 12px; border-radius: 6px; border: 1px solid #444; background: #000; color: #fff; width: 250px; margin-bottom: 10px; }
-        button { padding: 12px 25px; border-radius: 6px; border: none; background: #9147ff; color: white; cursor: pointer; font-weight: bold; }
-        button:hover { background: #772ce8; }
-        #chat-container { width: 90%; max-width: 500px; margin-top: 20px; }
-        .msg { background: #1f1f23; padding: 12px; margin-bottom: 8px; border-radius: 6px; border-left: 4px solid #9147ff; animation: slideIn 0.3s; }
-        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
-    </style>
+    <title>Audio Call</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
-<body>
+<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center font-sans">
 
-<div class="setup" id="setup">
-    <h3>Twitch TTS Chat</h3>
-    <input type="text" id="channelInput" placeholder="Введите имя канала...">
-    <br>
-    <button onclick="startChat()">Подключить чат</button>
-</div>
+    <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl w-96 text-center border border-slate-700">
+        <h1 class="text-2xl font-bold mb-6">Аудио Звонок</h1>
+        
+        <div class="mb-6 bg-slate-900 p-4 rounded-xl border border-slate-700">
+            <p class="text-xs text-slate-400 uppercase tracking-widest mb-1">Ваш ID</p>
+            <code id="my-id" class="text-blue-400 font-mono text-lg">Загрузка...</code>
+        </div>
 
-<div id="chat-container"></div>
+        <input id="peer-id" placeholder="ID собеседника" 
+               class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-blue-500 transition">
+        
+        <button onclick="startCall()" 
+                class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-semibold transition transform active:scale-95">
+            Позвонить
+        </button>
 
-<script>
-    function startChat() {
-        const channel = document.getElementById('channelInput').value.trim();
-        if (!channel) return alert('Введите имя канала!');
+        <div id="status" class="mt-6 text-sm text-slate-400">Ожидание...</div>
+    </div>
 
-        // Прячем меню настройки
-        document.getElementById('setup').style.display = 'none';
+    <audio id="remoteAudio" autoplay></audio>
 
-        // Инициализация чата
-        const client = new tmi.Client({
-            channels: [channel]
+    <script>
+        const peer = new Peer();
+        const status = document.getElementById('status');
+        
+        peer.on('open', id => document.getElementById('my-id').innerText = id);
+
+        // Получаем доступ только к микрофону
+        navigator.mediaDevices.getUserMedia({ video: false, audio: true }).then(stream => {
+            peer.on('call', call => {
+                call.answer(stream);
+                status.innerText = "Разговор идет...";
+                call.on('stream', remoteStream => {
+                    const audio = document.getElementById('remoteAudio');
+                    audio.srcObject = remoteStream;
+                });
+            });
         });
 
-        client.connect().then(() => {
-            console.log("Успешное подключение!");
-        });
-
-        client.on('message', (channel, tags, message, self) => {
-            if (self) return;
-
-            const username = tags['display-name'];
+        function startCall() {
+            const peerId = document.getElementById('peer-id').value;
+            if (!peerId) return alert("Введите ID");
             
-            // Вывод в чат
-            const chatContainer = document.getElementById('chat-container');
-            const div = document.createElement('div');
-            div.className = 'msg';
-            div.innerHTML = `<strong>${username}:</strong> ${message}`;
-            chatContainer.prepend(div);
-
-            // Озвучка (TTS)
-            // Важно: чтобы звук сработал, пользователь ДОЛЖЕН кликнуть на страницу хотя бы раз!
-            const speech = new SpeechSynthesisUtterance(`${username} говорит ${message}`);
-            speech.lang = 'ru-RU';
-            speech.rate = 1;
-            window.speechSynthesis.speak(speech);
-
-            // Ограничение сообщений в DOM (чтобы не тормозил браузер)
-            if (chatContainer.children.length > 10) {
-                chatContainer.removeChild(chatContainer.lastChild);
-            }
-        });
-    }
-</script>
+            navigator.mediaDevices.getUserMedia({ video: false, audio: true }).then(stream => {
+                const call = peer.call(peerId, stream);
+                status.innerText = "Звоним...";
+                call.on('stream', remoteStream => {
+                    const audio = document.getElementById('remoteAudio');
+                    audio.srcObject = remoteStream;
+                    status.innerText = "Разговор идет...";
+                });
+            });
+        }
+    </script>
 </body>
 </html>
